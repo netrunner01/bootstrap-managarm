@@ -486,6 +486,30 @@ def ensure_sysroot_links(sysroot):
             raise RuntimeError("Broken sysroot, please fix this manually and rerun this script")
 
 
+def compile_gsettings_schemas(sysroot):
+    # xbps post_install hooks (glib-compile-schemas) run target binaries, so they never
+    # execute during host-side image assembly. That leaves gschemas.compiled absent, and
+    # glib's GSettingsSchemaSource then has no default source (at-spi, for one, aborts with
+    # "Cannot get the default GSettingsSchemaSource"). Regenerate it here with the host's
+    # glib-compile-schemas: the compiled GVDB blob is architecture-portable, and this
+    # mirrors how the image build already relies on host tools like mke2fs and mcopy.
+    schema_dir = os.path.join(sysroot, "usr/share/glib-2.0/schemas")
+    if not os.path.isdir(schema_dir):
+        return
+    tool = shutil.which("glib-compile-schemas")
+    if tool is None:
+        print(
+            "update-image: glib-compile-schemas not found on host; GSettings schemas will "
+            "not be compiled (gschemas.compiled absent -- at-spi and other GSettings users "
+            "will fail at runtime)"
+        )
+        return
+    print(f"update-image: compiling GSettings schemas in {schema_dir}")
+    res = subprocess.run([tool, schema_dir])
+    if res.returncode != 0:
+        print(f"update-image: glib-compile-schemas exited {res.returncode} (continuing)")
+
+
 def iterate_plan(plan, callbacks):
     for _act in plan:
         kwargs = {}
@@ -1115,6 +1139,10 @@ mke2fs_command = try_find_command_exec("mke2fs")
 
 if verbose:
     print(f'update-image: Found sfdisk at "{sfdisk_command}"')
+
+# Regenerate host-skipped post_install artifacts on the sysroot before it is packed.
+if "update-fs" in action_list or "remake" in action_list:
+    compile_gsettings_schemas(args.sysroot_path)
 
 plan = Plan(
     [
