@@ -486,28 +486,39 @@ def ensure_sysroot_links(sysroot):
             raise RuntimeError("Broken sysroot, please fix this manually and rerun this script")
 
 
-def compile_gsettings_schemas(sysroot):
-    # xbps post_install hooks (glib-compile-schemas) run target binaries, so they never
-    # execute during host-side image assembly. That leaves gschemas.compiled absent, and
-    # glib's GSettingsSchemaSource then has no default source (at-spi, for one, aborts with
-    # "Cannot get the default GSettingsSchemaSource"). Regenerate it here with the host's
-    # glib-compile-schemas: the compiled GVDB blob is architecture-portable, and this
-    # mirrors how the image build already relies on host tools like mke2fs and mcopy.
+def regenerate_host_skipped_caches(sysroot):
+    # xbps post_install hooks run target binaries, so they never execute during host-side
+    # image assembly, leaving several caches absent. Rebuild the ones whose host tool derives
+    # architecture-portable output from data files (XML, .desktop, ...), mirroring how this
+    # script already relies on host tools like mke2fs and mcopy. Caches that must dlopen
+    # target .so modules -- gio-querymodules, gtk-query-immodules, gdk-pixbuf-query-loaders --
+    # cannot be built on the host and are left to the libraries' runtime directory scan
+    # (non-fatal). Any tool that is missing or fails only warns; it never breaks the build.
+    def run_if_available(tool, args, why):
+        exe = shutil.which(tool)
+        if exe is None:
+            print(f"update-image: {tool} not found on host; skipping {why}")
+            return
+        print(f"update-image: {why} ({tool})")
+        res = subprocess.run([exe, *args])
+        if res.returncode != 0:
+            print(f"update-image: {tool} exited {res.returncode} (continuing)")
+
     schema_dir = os.path.join(sysroot, "usr/share/glib-2.0/schemas")
-    if not os.path.isdir(schema_dir):
-        return
-    tool = shutil.which("glib-compile-schemas")
-    if tool is None:
-        print(
-            "update-image: glib-compile-schemas not found on host; GSettings schemas will "
-            "not be compiled (gschemas.compiled absent -- at-spi and other GSettings users "
-            "will fail at runtime)"
-        )
-        return
-    print(f"update-image: compiling GSettings schemas in {schema_dir}")
-    res = subprocess.run([tool, schema_dir])
-    if res.returncode != 0:
-        print(f"update-image: glib-compile-schemas exited {res.returncode} (continuing)")
+    if os.path.isdir(schema_dir):
+        # glib's GSettingsSchemaSource needs the compiled GVDB blob; without it at-spi aborts
+        # with "Cannot get the default GSettingsSchemaSource" and the a11y bus fails to start.
+        run_if_available("glib-compile-schemas", [schema_dir], "compiling GSettings schemas")
+
+    mime_dir = os.path.join(sysroot, "usr/share/mime")
+    if os.path.isdir(os.path.join(mime_dir, "packages")):
+        # freedesktop shared-mime-info database (mime.cache); Qt's QMimeDatabase reads it for
+        # file-type detection. The compiled format is big-endian by spec -> portable.
+        run_if_available("update-mime-database", [mime_dir], "building shared MIME database")
+
+    # Not built here: mimeinfo.cache (update-desktop-database) -- KDE resolves .desktop apps
+    # via ksycoca, not that cache. gio/immodule/gdk-pixbuf loader caches introspect target
+    # .so modules and cannot be built on the host; their libraries scan the dir at runtime.
 
 
 def iterate_plan(plan, callbacks):
@@ -1142,7 +1153,7 @@ if verbose:
 
 # Regenerate host-skipped post_install artifacts on the sysroot before it is packed.
 if "update-fs" in action_list or "remake" in action_list:
-    compile_gsettings_schemas(args.sysroot_path)
+    regenerate_host_skipped_caches(args.sysroot_path)
 
 plan = Plan(
     [
