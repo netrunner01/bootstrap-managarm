@@ -45,7 +45,7 @@ index 45b045c..85694bc 100644
     this->haveSmapsRollup = (access(PROCDIR "/self/smaps_rollup", R_OK) == 0);
  
     // Read btime (the kernel boot time, as number of seconds since the epoch)
-+#ifdef __managarm__
++#if 0 // managarm: /proc/stat now provides btime
 +   btime = 0;
 +#else
     FILE* statfile = fopen(PROCSTATFILE, "r");
@@ -72,7 +72,7 @@ index 45b045c..85694bc 100644
     memory_t swapFreeMem = 0;
     memory_t sreclaimableMem = 0;
  
-+#ifndef __managarm__
++#if 1 // managarm: /proc/meminfo now exists
     FILE* file = fopen(PROCMEMINFOFILE, "r");
     if (!file)
        CRT_fatalError("Cannot open " PROCMEMINFOFILE);
@@ -88,7 +88,7 @@ index 45b045c..85694bc 100644
  }
  
  static inline double LinuxProcessList_scanCPUTime(ProcessList* super) {
-+   return 0;
++   //return 0; // managarm: /proc/stat now provides cpu times
     LinuxProcessList* this = (LinuxProcessList*) super;
  
     LinuxProcessList_updateCPUcount(super);
