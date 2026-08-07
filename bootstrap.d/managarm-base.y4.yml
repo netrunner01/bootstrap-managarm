@@ -54,6 +54,7 @@ packages:
       - args: ['cp', '@SOURCE_ROOT@/extrafiles/gshadow', '@THIS_COLLECT_DIR@/etc']
       - args: ['cp', '@SOURCE_ROOT@/extrafiles/resolv.conf', '@THIS_COLLECT_DIR@/etc']
       - args: ['cp', '@SOURCE_ROOT@/extrafiles/hosts', '@THIS_COLLECT_DIR@/etc']
+      - args: ['cp', '@SOURCE_ROOT@/extrafiles/environment', '@THIS_COLLECT_DIR@/etc']
       # Install the default config.site
       - args: ['cp', '@SOURCE_ROOT@/scripts/config.site', '@THIS_COLLECT_DIR@/usr/share']
       # Link /bin, /lib and /sbin to their /usr counterparts

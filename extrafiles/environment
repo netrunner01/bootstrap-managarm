@@ -1,0 +1,15 @@
+#
+# This file is parsed by the pam_env module.
+#
+# Syntax: simple "KEY=VAL" pairs on separate lines.
+#
+
+# Desktop bring-up workarounds -- temporary, remove once the underlying defects are fixed.
+# Both are needed only by the KDE Plasma session; weston (the default) ignores them.
+#
+# MESA_LOADER_DRIVER_OVERRIDE: Mesa does not yet map the QEMU stdvga PCI id (1234:1111),
+#   so kwin's EGL init finds no driver. Force software rendering. Tracked as DEF-60.
+# KWIN_DRM_NO_AMS: kwin's atomic mode setting crashes gfx_bochs; fall back to the legacy
+#   modeset path. Tracked as DEF-30.
+MESA_LOADER_DRIVER_OVERRIDE=kms_swrast
+KWIN_DRM_NO_AMS=1
