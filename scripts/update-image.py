@@ -521,6 +521,25 @@ def regenerate_host_skipped_caches(sysroot):
     # .so modules and cannot be built on the host; their libraries scan the dir at runtime.
 
 
+def apply_rootfs_overlay(sysroot):
+    # Copy the source-tracked rootfs overlay onto the sysroot before packing. This is for
+    # arbitrary image files that no package owns -- e.g. /etc/xdg/weston/weston.ini and its
+    # launcher icons -- so they survive make-image / remake-image and stay reproducible
+    # (unlike a hand-applied post-image overlay).
+    overlay = os.path.normpath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "rootfs-overlay")
+    )
+    if not os.path.isdir(overlay):
+        return
+    print(f"update-image: applying rootfs overlay from {overlay}")
+    for dirpath, _dirnames, filenames in os.walk(overlay):
+        rel = os.path.relpath(dirpath, overlay)
+        dest_dir = sysroot if rel == "." else os.path.join(sysroot, rel)
+        os.makedirs(dest_dir, exist_ok=True)
+        for name in filenames:
+            shutil.copy2(os.path.join(dirpath, name), os.path.join(dest_dir, name))
+
+
 def iterate_plan(plan, callbacks):
     for _act in plan:
         kwargs = {}
@@ -1154,6 +1173,7 @@ if verbose:
 # Regenerate host-skipped post_install artifacts on the sysroot before it is packed.
 if "update-fs" in action_list or "remake" in action_list:
     regenerate_host_skipped_caches(args.sysroot_path)
+    apply_rootfs_overlay(args.sysroot_path)
 
 plan = Plan(
     [
