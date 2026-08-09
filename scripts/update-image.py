@@ -537,7 +537,19 @@ def apply_rootfs_overlay(sysroot):
         dest_dir = sysroot if rel == "." else os.path.join(sysroot, rel)
         os.makedirs(dest_dir, exist_ok=True)
         for name in filenames:
-            shutil.copy2(os.path.join(dirpath, name), os.path.join(dest_dir, name))
+            src = os.path.join(dirpath, name)
+            dst = os.path.join(dest_dir, name)
+            # Replace any existing entry outright. copy2() opens dst for writing,
+            # which follows a symlinked dst (e.g. /etc/localtime -> zoneinfo/UTC)
+            # and clobbers the link *target* instead of the link; removing first
+            # avoids that. It also lets the overlay ship symlinks verbatim (copy2
+            # dereferences them), needed for /etc/localtime.
+            if os.path.lexists(dst):
+                os.remove(dst)
+            if os.path.islink(src):
+                os.symlink(os.readlink(src), dst)
+            else:
+                shutil.copy2(src, dst)
 
 
 def iterate_plan(plan, callbacks):
