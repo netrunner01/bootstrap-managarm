@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Plasma shutdown watchdog (managarm DEF-95 workaround)
+Exec=/usr/local/bin/plasma-shutdown-watchdog.sh
+OnlyShowIn=KDE;
+X-KDE-autostart-phase=1
+NoDisplay=true
