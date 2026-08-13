@@ -128,3 +128,54 @@ packages:
       - args: ['make', 'DESTDIR=@THIS_COLLECT_DIR@', 'install']
         environ:
           DESTDIR: '@THIS_COLLECT_DIR@'
+
+  - name: badwolf
+    architecture: '@OPTION:arch@'
+    metadata:
+      summary: Minimalist and privacy-oriented WebKitGTK browser
+      description: BadWolf is a minimalist and privacy-oriented web browser based on WebKitGTK and GTK+ 3.
+      spdx: 'BSD-3-Clause AND MPL-2.0'
+      website: 'https://hacktivis.me/projects/badwolf'
+      categories: ['www-client']
+    source:
+      subdir: 'ports'
+      url: 'https://distfiles.hacktivis.me/releases/badwolf/badwolf-1.4.0.tar.gz'
+      format: 'tar.gz'
+      checksum: blake2b:d805793f7d8252f9fc0d84b40af43bdec0cad7e0e054f3b827d458fa7acb920942d80c5e6df49e0f5d6f98deb8b6ddba47289d7905216062f7cc5752fb07656e
+      extract_path: 'badwolf-1.4.0'
+      version: '1.4.0'
+    tools_required:
+      - host-pkg-config
+      - host-ninja
+      - host-gettext
+      - system-gcc
+      - virtual: pkgconfig-for-target
+        triple: '@OPTION:arch-triple@'
+    pkgs_required:
+      - mlibc
+      - gtk+-3
+      - webkitgtk
+      - libxml
+      - glib
+    revision: 1
+    configure:
+      # BadWolf's hand-written configure is NOT out-of-tree safe (config.ninja + rules
+      # reference sources relatively), so build in the source tree via workdir. It reads
+      # PKGCONFIG (no underscore) and CC from the environment.
+      - args:
+        - '@THIS_SOURCE_DIR@/configure'
+        - 'PREFIX=/usr'
+        - 'MANDIR=/usr/share/man'
+        - 'WITH_WEBKITGTK=4.1'
+        - 'WITH_URI_PARSER=guri'
+        workdir: '@THIS_SOURCE_DIR@'
+        environ:
+          CC: '@OPTION:arch-triple@-gcc'
+          PKGCONFIG: '@OPTION:arch-triple@-pkg-config'
+    build:
+      - args: ['ninja']
+        workdir: '@THIS_SOURCE_DIR@'
+      - args: ['ninja', 'install']
+        workdir: '@THIS_SOURCE_DIR@'
+        environ:
+          DESTDIR: '@THIS_COLLECT_DIR@'
